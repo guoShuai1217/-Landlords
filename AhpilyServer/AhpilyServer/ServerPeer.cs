@@ -36,6 +36,8 @@ namespace AhpilyServer
                 for (int i = 0; i < maxCount; i++)
                 {
                     clientPeer = new ClientPeer();
+                    clientPeer.ReceiveArgs.Completed += Receive_Compelet;
+                    clientPeer.ReceiveArgs.UserToken = clientPeer;
                     clientPool.EnqueueClient(clientPeer);
                 }
                 
@@ -51,6 +53,8 @@ namespace AhpilyServer
             }
            
         }
+
+       
 
         #region 接收客户端的接入
 
@@ -90,7 +94,9 @@ namespace AhpilyServer
         {
             Socket clientSocket = e.AcceptSocket;
             ClientPeer clientPeer = clientPool.DequeueClient();
-            clientPeer.SetSocket(clientSocket);
+            clientPeer.ClientSocket = clientSocket;
+
+            StartReceive(clientPeer);
 
             e.AcceptSocket = null;
             StartAccept(e);
@@ -99,6 +105,60 @@ namespace AhpilyServer
         #endregion
 
 
+        /// <summary>
+        /// 开始接收客户端发来的数据
+        /// </summary>
+        /// <param name="client"></param>
+        private void StartReceive(ClientPeer client)
+        {
+            try
+            {
+                bool result =  client.ClientSocket.ReceiveAsync(client.ReceiveArgs);
+                if (!result)
+                {
+                    ProcessReceive(client.ReceiveArgs);
+                }
+            }
+            catch (Exception e )
+            {
+                Console.WriteLine(e.Message);
+            }
+            
+        }
+
+        // 接收客户端发来的数据 , 接收完成的时候 触发的事件
+        private void Receive_Compelet(object sender, SocketAsyncEventArgs e)
+        {
+            ProcessReceive(e);
+        }
+
+        /// <summary>
+        /// 处理客户端发送的数据
+        /// </summary>
+        /// <param name="receiveArgs"></param>
+        private void ProcessReceive(SocketAsyncEventArgs receiveArgs)
+        {
+            ClientPeer client = receiveArgs.UserToken as ClientPeer;
+
+            if (client.ReceiveArgs.SocketError == SocketError.Success && client.ReceiveArgs.BytesTransferred > 0)
+            {
+                byte[] dataArray = new byte[client.ReceiveArgs.BytesTransferred];
+                Buffer.BlockCopy(client.ReceiveArgs.Buffer, 0, dataArray, 0, client.ReceiveArgs.BytesTransferred);
+
+                client.StartReceive(dataArray); // 拆包
+            }
+            else if (client.ReceiveArgs.BytesTransferred == 0)
+            {
+                if (client.ReceiveArgs.SocketError == SocketError.Success) // 客户端主动断开连接
+                {
+                    
+                }
+                else // 网络异常 , 被动断开连接
+                {
+
+                }
+            }
+        }
 
 
     }

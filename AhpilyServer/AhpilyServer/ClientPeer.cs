@@ -11,11 +11,15 @@ namespace AhpilyServer
 {
     public class ClientPeer
     {
-        private Socket clientSocket;
+        public Socket ClientSocket { get; set; }
 
-        public void SetSocket(Socket socket)
+        public List<byte> dataCacheList = new List<byte>();
+
+        public SocketAsyncEventArgs ReceiveArgs;
+
+        public byte[] StartReceive(byte[] packet)
         {
-            this.clientSocket = socket;
+
         }
 
     }
