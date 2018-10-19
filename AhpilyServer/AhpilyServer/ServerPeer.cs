@@ -36,8 +36,10 @@ namespace AhpilyServer
                 for (int i = 0; i < maxCount; i++)
                 {
                     clientPeer = new ClientPeer();
+                    clientPeer.ReceiveArgs = new SocketAsyncEventArgs();
                     clientPeer.ReceiveArgs.Completed += Receive_Compelet;
                     clientPeer.ReceiveArgs.UserToken = clientPeer;
+                    clientPeer.rc += ReceiveCompeleted;
                     clientPool.EnqueueClient(clientPeer);
                 }
                 
@@ -53,8 +55,6 @@ namespace AhpilyServer
             }
            
         }
-
-       
 
         #region 接收客户端的接入
 
@@ -105,6 +105,9 @@ namespace AhpilyServer
         #endregion
 
 
+        #region 接收数据
+
+      
         /// <summary>
         /// 开始接收客户端发来的数据
         /// </summary>
@@ -146,6 +149,8 @@ namespace AhpilyServer
                 Buffer.BlockCopy(client.ReceiveArgs.Buffer, 0, dataArray, 0, client.ReceiveArgs.BytesTransferred);
 
                 client.StartReceive(dataArray); // 拆包
+
+                StartReceive(client); // 尾递归
             }
             else if (client.ReceiveArgs.BytesTransferred == 0)
             {
@@ -159,6 +164,20 @@ namespace AhpilyServer
                 }
             }
         }
+
+        #endregion
+
+        /// <summary>
+        /// 数据解析完成的处理
+        /// </summary>
+        /// <param name="client"></param>
+        /// <param name="obj"></param>
+        private void ReceiveCompeleted(ClientPeer client, object obj)
+        {
+             // 给应用层 , 让其使用
+        }
+
+
 
 
     }

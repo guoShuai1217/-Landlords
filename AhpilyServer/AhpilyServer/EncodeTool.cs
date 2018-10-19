@@ -50,7 +50,7 @@ namespace AhpilyServer
         {
             if (dataCacheList.Count < 4) // 包头是 int 类型 , 占4个字节
             {
-                throw new Exception("包的长度不足4 , 无法构成一个完整的消息");
+                //throw new Exception("包的长度不足4 , 无法构成一个完整的消息");
                 return null;
             }
 
@@ -63,7 +63,8 @@ namespace AhpilyServer
                     int remainLength = (int)(ms.Length - ms.Position); // 包的剩余长度 3456
                     if (length > remainLength)
                     {
-                        throw new Exception("数据长度不够包头约定的长度");
+                        //throw new Exception("数据长度不够包头约定的长度");
+                        return null;
                     }
 
                     byte[] data = br.ReadBytes(length); // 返回包头长度的包出去
