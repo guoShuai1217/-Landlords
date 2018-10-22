@@ -15,6 +15,16 @@ namespace AhpilyServer
 
         private ClientPeerPool clientPool; // 客户端连接池对象
 
+        private IApplication app;  // 应用层
+
+        /// <summary>
+        /// 设置应用层
+        /// </summary>
+        /// <param name="app"></param>
+        public void SetApplication(IApplication app)
+        {
+            this.app = app;
+        }
       
         /// <summary>
         /// 开启服务器
@@ -36,12 +46,13 @@ namespace AhpilyServer
                     clientPeer = new ClientPeer();                   
                     clientPeer.ReceiveArgs.Completed += Receive_Compelet;                  
                     clientPeer.rc = ReceiveCompeleted;
+                    clientPeer.sd = Disconnect;
                     clientPool.EnqueueClient(clientPeer);
                 }
                 
-
                 serverSocket.Bind(new IPEndPoint(IPAddress.Any, port));
                 serverSocket.Listen(maxCount);
+
                 Console.WriteLine("服务器启动成功"); // 服务器启动成功之后, 就开始监听客户端的接入(StartAccept())
                 StartAccept(null);
             }
@@ -65,7 +76,6 @@ namespace AhpilyServer
                 e.Completed += Accept_Completed;
             }
 
-            sema.WaitOne(); // 限制访问服务器的客户端数量
            
             bool result = serverSocket.AcceptAsync(e); // 异步事件是否执行完毕 
                                                        // result == true 正在执行 , 执行完毕后触发事件 e.Completed (也就是触发 Accept_Completed 方法)
@@ -88,9 +98,11 @@ namespace AhpilyServer
         /// </summary>
         private void ProcessAccept(SocketAsyncEventArgs e)
         {
-            Socket clientSocket = e.AcceptSocket;
+            sema.WaitOne(); // 限制访问服务器的客户端数量
+
+            //Socket clientSocket = e.AcceptSocket;
             ClientPeer clientPeer = clientPool.DequeueClient();
-            clientPeer.ClientSocket = clientSocket;
+            clientPeer.ClientSocket = e.AcceptSocket; // 得到客户端的对象
 
             StartReceive(clientPeer);
 
@@ -150,13 +162,15 @@ namespace AhpilyServer
             }
             else if (client.ReceiveArgs.BytesTransferred == 0)
             {
-                if (client.ReceiveArgs.SocketError == SocketError.Success) // 客户端主动断开连接
+                if (client.ReceiveArgs.SocketError == SocketError.Success) 
                 {
-                    
+                    // 客户端主动断开连接
+                    Disconnect(client, "客户端主动断开连接");
                 }
-                else // 网络异常 , 被动断开连接
+                else 
                 {
-
+                    // 网络异常 , 被动断开连接
+                    Disconnect(client, client.ReceiveArgs.SocketError.ToString());
                 }
             }
         }
@@ -170,10 +184,40 @@ namespace AhpilyServer
         /// <param name="obj"></param>
         private void ReceiveCompeleted(ClientPeer client, SocketMsg msg)
         {
-             // 给应用层 , 让其使用
+            // 给应用层 , 让其使用
+            app.OnReceive(client, msg);
         }
 
+        #region 断开连接
 
+        /// <summary>
+        /// 断开连接
+        /// </summary>
+        /// <param name="client">当前指定的客户端</param>
+        /// <param name="reason">断开原因</param>
+        public void Disconnect(ClientPeer client, string reason)
+        {
+            try
+            {
+                if (client == null)
+                {
+                    throw new Exception("当前客户端为空 , 无法断开连接");
+                }
+
+                // 通知应用层,客户端断开连接了                
+                app.OnDisconnect(client);
+
+                client.Disconnect();
+                clientPool.EnqueueClient(client); // 回收对象,以便下次使用
+                sema.Release();  // 退出信号量 , 返回前一个计数
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+        }
+
+        #endregion
 
 
     }

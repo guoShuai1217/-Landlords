@@ -22,16 +22,16 @@ namespace AhpilyServer
         /// 包头 是这个包的长度
         /// 包尾 就是这个包
         /// </summary>
-        /// <param name="data"></param>
+        /// <param name="packet"></param>
         /// <returns></returns>
-        public static byte[] EncodePacket(byte[] data)
+        public static byte[] EncodePacket(byte[] packet)
         {
             using (MemoryStream ms = new MemoryStream())
             {
                 using (BinaryWriter bw = new BinaryWriter(ms))
                 {
-                    bw.Write(data.Length);
-                    bw.Write(data);
+                    bw.Write(packet.Length);
+                    bw.Write(packet);
 
                     byte[] dataArray = new byte[(int)ms.Length];
                     Buffer.BlockCopy(ms.GetBuffer(), 0, dataArray, 0, (int)ms.Length);
@@ -129,7 +129,7 @@ namespace AhpilyServer
                     msg.SubCode = br.ReadInt32();
 
                     int length = (int)(ms.Length - ms.Position); // 剩余字节长度
-                    if (length > 0) // 还有剩余的字节没有读取 , 证明 Value 不为空 
+                    if (length > 0)  // 还有剩余的字节没有读取 , 证明 Value 不为空 
                     {
                         byte[] dataArray = br.ReadBytes(length);
                         object value = DecodeObject(dataArray);
